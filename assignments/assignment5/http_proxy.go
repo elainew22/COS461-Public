@@ -1,7 +1,7 @@
 /*****************************************************************************
  * http_proxy.go                                                                 
- * Names: 
- * NetIds:
+ * Names: Jana Sebaali and Elaine Wright
+ * NetIds: jsebaali, ew22
  *****************************************************************************/
 
  // TODO: implement an HTTP proxy
@@ -21,23 +21,77 @@ import (
 
 const SEND_BUFFER_SIZE := 2048
 
+//func internalError() {
+ // Error(w http.ResponseWriter, "Internal Server Error", 500)
+//}
+
 func handleConnection(c Conn){
 
     // check for a properly-formatted HTTP request
     
 
     var data [SEND_BUFFER_SIZE]byte
-    length, err := c.Read(data)
-    
+    var builder strings.builder
 
-    if err != nil && err != io.EOF {
-    // handle error
+
+    length, err := c.Read(data)
+    if err != nil {
+      // return error on Read() somehow
+      return err
+    }
+    
+    //err != nil && 
+    while err != io.EOF {
+      lengthData, err := builder.write(data) 
+      length, err := c.Read(data)
+      if err != nil {
+        // return error on Read() somehow
+        return err
+      }
     }
 
-    bytesReader := bytes.NewReader(data)
-    reader := bufio.NewReader(bytesReader)
+    // write EOF part
+    lengthData, err := builder.write(data) 
+
+
+    reader := bufio.newReader(builder.String())
+
+  //  bytesReader := bytes.NewReader(data)
+  //  reader := bufio.NewReader(bytesReader)
 
     req, err := reader.ReadRequest()
+
+    // make HTTP response
+    func ReadResponse(r *bufio.Reader, req *Request) (*Response, error)
+
+    response, err := ReadResponse(reader, )
+
+
+    if req.method != 'GET' {
+      // return response w 400 error 
+      resp, err := http.get('http://www.princeton.edu/%') 
+      // send to client
+      // func (c *TCPConn) Write(b []byte) (int, error)
+      // c.Write("400 Bad Request")
+      writer := bufio.newWriter()
+      err := resp.Write(writer)
+      if err != nil {
+        // there was a problem
+
+      }
+      // write array
+      // turn this into func later?
+      var writeByte [writer.Size()]byte
+      len, err := writer.Write(writeByte)
+      err := c.Write(writeByte)
+    }
+    
+
+    // else talk to server and do GET
+
+    // fix headers
+    
+    resp, err := http.get(req)
     
 }
 
@@ -72,3 +126,4 @@ func main() {
 
 
  
+

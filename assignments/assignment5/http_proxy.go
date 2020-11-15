@@ -16,83 +16,110 @@ import (
   "log"
   "net"
   "bufio"
-   "bytes"
+  "bytes"
+  "strings"
+  "net/http"
+  "net/url"
+  "io/ioutil"
 )
 
-const SEND_BUFFER_SIZE := 2048
+const SEND_BUFFER_SIZE = 2048
 
-//func internalError() {
- // Error(w http.ResponseWriter, "Internal Server Error", 500)
-//}
+func internalError(c net.Conn) {
+   b := []byte("500 Internal Server Error")
+   c.Write(b)
+}
 
-func handleConnection(c Conn){
+func badReqError(c net.Conn) {
+   b := []byte("400 Bad Request Error")
+   c.Write(b)
+}
 
-    // check for a properly-formatted HTTP request
-    
+func checkError(err error, c net.Conn){
+    if err != nil {
+         b := []byte("400 Bad Request Error")
+         c.Write(b)
+    }
+}
+
+
+func handleConnection(c net.Conn){
 
     var data [SEND_BUFFER_SIZE]byte
-    var builder strings.builder
+    var builder strings.Builder
 
-
-    length, err := c.Read(data)
-    if err != nil {
-      // return error on Read() somehow
-      return err
-    }
-    
-    //err != nil && 
-    while err != io.EOF {
-      lengthData, err := builder.write(data) 
+    // read request in newReader
+    err := nil
+    for err != io.EOF {
       length, err := c.Read(data)
-      if err != nil {
-        // return error on Read() somehow
-        return err
-      }
+      checkError(err, c)
+      
+      lengthData, errW := builder.write(data)
+      checkError(errW, c) // TODO need to return from method if error
     }
 
-    // write EOF part
-    lengthData, err := builder.write(data) 
+    // read request from reader
+    reader := bufio.NewReader(builder.String())
+    req, err := http.ReadRequest(reader)
 
+    if req.method != "GET" {
+       badReqError(c)
+    } else {
+    
+    // check if it is HTTP 1.1
+        if req.Proto != "HTTP/1.1" {
+          internalError(c)
+        }
+        
+        // update the header to include close connection
+        if req.Header.Get("Connection") == "" {
+            req.Header.Add("Connection", "close")
+        } else {
+        req.Header.Set("Connection", "close")
+        }
+         
+       
+        // get the host url
+        host := req.URL.Host
+        u, err := url.Parse(host)
+        checkError(err, c)
+        
+        // if the port is not available, append the default port
+        port := u.Port()
+        if port==""{
+         host = host + ":80"
+         port = "80"
+        }
+        
+        // connect to server
+        cServer, err := net.Dial("tcp", host)
+        checkError(err, c)
+        
+        // send the request to the server
+        body, err := ioutil.ReadAll(req.Body)
+        cServer.Write(string(body))
+        
+        // read the response from the connection
+        var dataRes [SEND_BUFFER_SIZE]byte
+        var builderRes strings.builder
+        err := nil
+        for err != io.EOF {
+          _ , err := c.Read(dataRes)
+          checkError(err, c)
+          
+          _ , errW := builderRes.write(dataRes)
+          checkError(errW, c)
+        }
 
-    reader := bufio.newReader(builder.String())
-
-  //  bytesReader := bytes.NewReader(data)
-  //  reader := bufio.NewReader(bytesReader)
-
-    req, err := reader.ReadRequest()
-
-    // make HTTP response
-    func ReadResponse(r *bufio.Reader, req *Request) (*Response, error)
-
-    response, err := ReadResponse(reader, )
-
-
-    if req.method != 'GET' {
-      // return response w 400 error 
-      resp, err := http.get('http://www.princeton.edu/%') 
-      // send to client
-      // func (c *TCPConn) Write(b []byte) (int, error)
-      // c.Write("400 Bad Request")
-      writer := bufio.newWriter()
-      err := resp.Write(writer)
-      if err != nil {
-        // there was a problem
-
-      }
-      // write array
-      // turn this into func later?
-      var writeByte [writer.Size()]byte
-      len, err := writer.Write(writeByte)
-      err := c.Write(writeByte)
+        // read response from reader
+        readerRes := bufio.NewReader(builderRes.String())
+        
+        // send the response to the client
+        buf := new(bytes.Buffer)
+        buf.ReadFrom(readerRes)
+        c.Write(buf.Bytes())
+    
     }
-    
-
-    // else talk to server and do GET
-
-    // fix headers
-    
-    resp, err := http.get(req)
-    
 }
 
 func proxy(port string) {

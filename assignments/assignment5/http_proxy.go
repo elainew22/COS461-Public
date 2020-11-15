@@ -47,24 +47,42 @@
  func handleConnection(c net.Conn){
     fmt.Println("in handle")
  
-     data := make([]byte, SEND_BUFFER_SIZE)
+	 data := make([]byte, SEND_BUFFER_SIZE)
+	 dataTwo := make([]byte, 0)
      var buffer bytes.Buffer
 	 var err error 
+	 var length int
+
+	 fmt.Println(buffer)
+	 fmt.Println(dataTwo)
+
+	 bufferTwo := bytes.NewBuffer(dataTwo)
+
  
 	 // read request in newReader
 	 for err != io.EOF {
-	   _ , err := c.Read(data)
+	   length, err = c.Read(data)
 	   if checkError(err, c) == -1 {return}
-	   
-	   _, errW := buffer.Write(data)
+	
+	   _, errW := buffer.Write(data[:length])
+	  bufferTwo.Write(data[:length])
       if checkError(errW, c) == -1 {return}
-      fmt.Println("here")
+	  fmt.Println("here - reading and writing")
+	  fmt.Println(data)
+	  fmt.Println(buffer)
+	  fmt.Println(bufferTwo)
+	  fmt.Println(bufferTwo.Bytes())
 	 }
+
+	 fmt.Println("finished reading and writing")
  
 	 // read request from reader
 	 var reader io.Reader
-     reader.Read(buffer.Bytes())
-     readerBuf := bufio.NewReader(reader)
+	 //reader.Read(buffer.Bytes())
+	 reader.Read(bufferTwo.Bytes())
+	 readerBuf := bufio.NewReader(reader)
+	 
+	 fmt.Println("made readerBuf")
      
 	 req, err := http.ReadRequest(readerBuf)
      if checkError(err, c) == -1 {return}
@@ -83,8 +101,10 @@
 		 // update the header to include close connection
 		 if req.Header.Get("Connection") == "" {
 			 req.Header.Add("Connection", "close")
+			 fmt.Println("added Connection close header")
 		 } else {
 		 req.Header.Set("Connection", "close")
+		 fmt.Println("set Connection close header")
 		 }
 		  
 		
@@ -96,6 +116,7 @@
        
 		 
 		 // connect to server
+		 fmt.Println("dialing server...")
 		 cServer, err := net.Dial("tcp", host)
          if checkError(err, c) == -1 {return}
 		 
@@ -115,7 +136,7 @@
 		   
 		   _ , errW := bufferRes.Write(dataRes)
 	       if checkError(errW, c) == -1 {return}
-        fmt.Println("here")
+        	fmt.Println("reading and writing response")
 		 }
  
 		 // read response from reader
@@ -165,4 +186,3 @@
    proxy(port)
  
  }
- 

@@ -10,17 +10,16 @@
 
  // Importing packages 
  import (
-   "io"
    "os"
    "log"
    "net"
    "bufio"
    "bytes"
    "net/http"
-   "io/ioutil"
    "strings"
    "fmt"
  )
+ // io/ioutil
  
  const SEND_BUFFER_SIZE = 2048
  
@@ -145,9 +144,11 @@
 		// body, err := ioutil.ReadAll(rBody)
 		// if checkError(err, c) == -1 {return}
 		// fmt.Println(body)
+		
 		 req.Write(cServer)
 		 
 		 // read the response from the connection
+		fmt.Println("reading response...")
          dataRes := make([]byte, SEND_BUFFER_SIZE)
 		 bufferRes := bytes.NewBuffer(dataRes)
          
@@ -155,29 +156,32 @@
 
 		// fmt.Println("starting server response loop...")
 		// for err != io.EOF {
-		fmt.Println("reading")
+		//fmt.Println("reading")
 		fmt.Println(err)
-		length, err := cServer.Read(dataRes)
-		fmt.Println("checking error")
+		length, err = cServer.Read(dataRes)
+		//fmt.Println("checking error")
 		if checkError(err, c) == -1 {return}
 		
 		_ , errW := bufferRes.Write(dataRes[length:])
 		if checkError(errW, c) == -1 {return}
-		fmt.Println("reading and writing response")
+		//fmt.Println("reading and writing response")
 		 //}
 
-		fmt.Println("exiting loop")
+		//fmt.Println("exiting loop")
  
 		 // read response from reader
-        var readerR io.Reader
-        readerR.Read(bufferRes.Bytes())
-        readerRBuf := bufio.NewReader(readerR)
-	
-		 
+       // var readerR io.Reader
+        readerR := bytes.NewReader(bufferRes.Bytes())
+		readerRBuf := bufio.NewReader(readerR)
+		
+		fmt.Println("sending response")
 		 // send the response to the client
 		 buf := new(bytes.Buffer)
 		 buf.ReadFrom(readerRBuf)
+		 fmt.Println(buf)
 		 c.Write(buf.Bytes())
+
+		 fmt.Println("done?")
 	 
 	 }
  }

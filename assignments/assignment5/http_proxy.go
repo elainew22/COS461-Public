@@ -14,15 +14,10 @@
    "log"
    "net"
    "bufio"
-   //"bytes"
    "net/http"
    "strings"
- // "fmt"
- // "io"
  )
- // io/ioutil
- 
- const SEND_BUFFER_SIZE = 200
+
  
  func internalError(c net.Conn) {
     b := []byte("500 Internal Server Error")

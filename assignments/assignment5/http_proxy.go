@@ -14,14 +14,15 @@
    "log"
    "net"
    "bufio"
-   "bytes"
+   //"bytes"
    "net/http"
    "strings"
- //  "fmt"
+ // "fmt"
+ // "io"
  )
  // io/ioutil
  
- const SEND_BUFFER_SIZE = 20480
+ const SEND_BUFFER_SIZE = 200
  
  func internalError(c net.Conn) {
     b := []byte("500 Internal Server Error")
@@ -43,38 +44,10 @@
  }
  
  
- func handleConnection(c net.Conn){
-  //  fmt.Println("in handle")
- 
-   ////  data := make([]byte, SEND_BUFFER_SIZE)
-  ////   dataTwo := make([]byte, 0)
-    // var buffer bytes.Buffer
-  ////  buffer := bytes.NewBuffer(dataTwo)
-     var err error
-     var length int
-
-   //  fmt.Println(buffer)
-   //  fmt.Println(dataTwo)
-    test := bufio.NewReader(c)
+  func handleConnection(c net.Conn){
     
-
- ////    length, err = c.Read(data)
-   ////  if checkError(err, c) == -1 {return}
-  
-  ////  _, errW := buffer.Write(data[:length])
-    //bufferTwo.Write(data[:length])
-  ////  if checkError(errW, c) == -1 {return}
-  //  fmt.Println("here - reading and writing")
-
- 
-    
-  //   fmt.Println("finished reading and writing")
- 
-     // read request from reader
-   // HERE reader := bytes.NewReader(buffer.Bytes())
-  //HERE  readerBuf := bufio.NewReader(reader)
-     
-     req, err := http.ReadRequest(test)
+     reqR := bufio.NewReader(c)
+     req, err := http.ReadRequest(reqR)
      if checkError(err, c) == -1 {return}
  
      if req.Method != "GET" {
@@ -82,11 +55,9 @@
         return
      } else {
      
-     // check if it is HTTP 1.1
+        // check if it is HTTP 1.1
          if req.Proto != "HTTP/1.1" {
            req.Proto = "HTTP/1.1"
-          // internalError(c)
-          // return
          }
          
          // update the header to include close connection
@@ -96,70 +67,41 @@
          req.Header.Set("Connection", "close")
          }
       
-      //  fmt.Println(req)
          // get the host url
          host := req.URL.Host
          if strings.LastIndex(host, ":") == -1 {
           host = host + ":80"
         }
-       
-         
+  
          // connect to server
          cServer, err := net.Dial("tcp", host)
-    //     fmt.Println(err)
          if checkError(err, c) == -1 {return}
          
-        // fmt.Println("sending request...")
-         req.Write(cServer)
-         
-         // read the response from the connection
-       // fmt.Println("reading response...")
-         dataRes := make([]byte, SEND_BUFFER_SIZE)
-         bufferRes := bytes.NewBuffer(dataRes)
-         
-         err = nil
-
-        length, err = cServer.Read(dataRes)
+        req.Write(cServer)
+        resR := bufio.NewReader(cServer)
+        
+        res, err := http.ReadResponse(resR, nil)
         if checkError(err, c) == -1 {return}
         
-        _ , errW := bufferRes.Write(dataRes[length:])
-        if checkError(errW, c) == -1 {return}
- 
-         // read response from reader
-        readerR := bytes.NewReader(bufferRes.Bytes())
-        readerRBuf := bufio.NewReader(readerR)
-        
-        res, err := http.ReadResponse(readerRBuf, nil)
-   //     fmt.Println("response:----")
-     //   fmt.Println(res)
-     
-        if checkError(err, c) == -1 {return}
         res.Write(c)
         defer c.Close()
-    
      
      }
  }
  
- func proxy(port string) {
-   //  fmt.Println("will start listening")
+  func proxy(port string) {
      addrPort := ":" + port
      ln, err := net.Listen("tcp", addrPort)
      if err != nil {
         return
      }
-   //  fmt.Println("listening")
  
-          
-  //   fmt.Println("before handling...")
      for {
          conn, err := ln.Accept()
          if err != nil {
-             // handle error
              return
  
          }
-       //  fmt.Println("handling...")
          go handleConnection(conn)
      }
  

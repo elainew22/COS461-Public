@@ -135,7 +135,7 @@
      
         if checkError(err, c) == -1 {return}
         res.Write(c)
-        c.Close()
+        defer c.Close()
     
      
      }

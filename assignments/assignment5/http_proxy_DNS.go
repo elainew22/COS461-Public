@@ -18,7 +18,7 @@
    "bytes"
    "net/http"
    "strings"
-   "fmt"
+  // "fmt"
    "golang.org/x/net/html"
    
  )
@@ -47,6 +47,9 @@
  
  func dnsFetching(r io.Reader, c net.Conn){
     _, err := html.Parse(r)
+            if err != nil{
+       // fmt.Println("parsing response")
+        }
     if checkError(err, c) == -1 {return}
     
     var f func(*html.Node)
@@ -65,49 +68,30 @@
     }
 }
  func handleConnection(c net.Conn){
-    fmt.Println("in handle")
+   // fmt.Println("in handle")
  
-     data := make([]byte, SEND_BUFFER_SIZE)
-     dataTwo := make([]byte, 0)
-    // var buffer bytes.Buffer
-    buffer := bytes.NewBuffer(dataTwo)
-     var err error
-     var length int
+   ////  data := make([]byte, SEND_BUFFER_SIZE)
+   //  dataTwo := make([]byte, 0)
+   //  buffer := bytes.NewBuffer(dataTwo)
+   //  var err error
+    // var length int
 
-     fmt.Println(buffer)
-     fmt.Println(dataTwo)
-
-    
-
-     length, err = c.Read(data)
-     if checkError(err, c) == -1 {return}
+      test := bufio.NewReader(c)
+   //  if checkError(err, c) == -1 {return}
   
-    _, errW := buffer.Write(data[:length])
-    //bufferTwo.Write(data[:length])
-    if checkError(errW, c) == -1 {return}
-    fmt.Println("here - reading and writing")
+  //  _, errW := buffer.Write(data[:length])
+   // if checkError(errW, c) == -1 {return}
 
- 
+ //   reader := bytes.NewReader(buffer.Bytes())
+  //  readerBuf := bufio.NewReader(reader)
 
-     fmt.Println("finished reading and writing")
- 
-     // read request from reader
-    // var reader io.Reader
-    // reader.Read(buffer.Bytes())
-    reader := bytes.NewReader(buffer.Bytes())
-     //reader.Read(bufferTwo.Bytes())
-    readerBuf := bufio.NewReader(reader)
      
-     fmt.Println("made readerBuf")
-
-    // fmt.Println(readerBuf)
-     
-     req, err := http.ReadRequest(readerBuf)
+     req, err := http.ReadRequest(test)
 
     
 
      if checkError(err, c) == -1 {return}
- 
+    
      if req.Method != "GET" {
         badReqError(c)
         return
@@ -122,13 +106,13 @@
          // update the header to include close connection
          if req.Header.Get("Connection") == "" {
              req.Header.Add("Connection", "close")
-             fmt.Println("added Connection close header")
+         //    fmt.Println("added Connection close header")
          } else {
          req.Header.Set("Connection", "close")
-         fmt.Println("set Connection close header")
+        // fmt.Println("set Connection close header")
          }
-          
-             fmt.Println(req)
+          //  fmt.Println("")
+       //   fmt.Println(req)
              
          // get the host url
          host := req.URL.Host
@@ -136,76 +120,51 @@
           host = host + ":80"
         }
        
-         
          // connect to server
-         fmt.Println("dialing server...")
-         fmt.Println(host)
-         fmt.Println(req.Method)
-
          cServer, err := net.Dial("tcp", host)
-         fmt.Println(err)
          if checkError(err, c) == -1 {return}
          
-         fmt.Println("sending request...")
-         // send the request to the server
-        // rBody := strings.NewReader(req.Body)
-        // rBody, err := req.GetBody()
-        // fmt.Println(rBody)
-        // body, err := ioutil.ReadAll(rBody)
-        // if checkError(err, c) == -1 {return}
-        // fmt.Println(body)
+     //    fmt.Println("sending request...")
         
          req.Write(cServer)
          
          // read the response from the connection
-        fmt.Println("reading response...")
+      //  fmt.Println("reading response...")
          dataRes := make([]byte, SEND_BUFFER_SIZE)
          bufferRes := bytes.NewBuffer(dataRes)
          
          err = nil
-
-        
-        length, err = cServer.Read(dataRes)
+        length, err := cServer.Read(dataRes)
         if checkError(err, c) == -1 {return}
         
         _ , errW := bufferRes.Write(dataRes[length:])
         if checkError(errW, c) == -1 {return}
-
-        //fmt.Println("exiting loop")
  
          // read response from reader
         readerR := bytes.NewReader(bufferRes.Bytes())
-        
         go dnsFetching(readerR, c)
         readerRBuf := bufio.NewReader(readerR)
+        res, _ := http.ReadResponse(readerRBuf, nil)
+              
+    //    fmt.Println("response:----")
+    //    fmt.Println(res)
+      //  if checkError(err, c) == -1 {return}
         
-        res, err := http.ReadResponse(readerRBuf, nil)
-        
-       
-         
-        fmt.Println("response:----")
-        fmt.Println(res)
-        if checkError(err, c) == -1 {return}
-        
-        fmt.Println("sending response")
+    //    fmt.Println("sending response")
         res.Write(c)
         c.Close()
     
-     
      }
  }
  
  func proxy(port string) {
-     fmt.Println("will start listening")
      addrPort := ":" + port
      ln, err := net.Listen("tcp", addrPort)
      if err != nil {
         return
      }
-     fmt.Println("listening")
+  //   fmt.Println("listening")
  
-          
-     fmt.Println("before handling...")
      for {
          conn, err := ln.Accept()
          if err != nil {
@@ -213,7 +172,6 @@
              return
  
          }
-         fmt.Println("handling...")
          go handleConnection(conn)
      }
  

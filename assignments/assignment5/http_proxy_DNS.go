@@ -33,7 +33,7 @@
  
  func checkError(err error, c net.Conn) (int){
      if err != nil {
-          b := []byte("400 Bad Request Error")
+          b := []byte("500 Internal Server Error")
           c.Write(b)
           return -1
      }
@@ -62,8 +62,9 @@
 
   func handleConnection(c net.Conn){
     
-     reqR := bufio.NewReader(c)
+    reqR := bufio.NewReader(c)
      req, err := http.ReadRequest(reqR)
+
      if checkError(err, c) == -1 {return}
  
      if req.Method != "GET" {
@@ -92,17 +93,30 @@
          // connect to server
          cServer, err := net.Dial("tcp", host)
          if checkError(err, c) == -1 {return}
-         
-        req.Write(cServer)
-        resR := bufio.NewReader(cServer)
-        go dnsFetching(resR, c)
+
+         writerS := bufio.NewWriter(cServer)
+
+         err = req.Write(writerS)
+         if checkError(err, c) == -1 {return}
+
+         writerS.Flush()
+
+         resR := bufio.NewReader(cServer)
+
+         go dnsFetching(resR, c)
         
-        res, err := http.ReadResponse(resR, nil)
+         res, err := http.ReadResponse(resR, nil)
+         if checkError(err, c) == -1 {return}
+
+        writerC := bufio.NewWriter(c)
+        
+        err = res.Write(writerC)
         if checkError(err, c) == -1 {return}
         
-        res.Write(c)
+        writerC.Flush()
+
         defer c.Close()
-     
+         
      }
  }
  
